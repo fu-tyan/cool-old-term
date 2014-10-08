@@ -33,6 +33,8 @@
 #include "Filter.h"
 #include "Character.h"
 #include "ksession.h"
+#include "ScreenWindow.h"
+#include "Screen.h"
 //#include "konsole_export.h"
 #define KONSOLEPRIVATE_EXPORT
 
@@ -46,8 +48,6 @@ class QTimerEvent;
 //class KMenu;
 
 extern unsigned short vt100_graphics[32];
-
-class ScreenWindow;
 
 /**
  * A widget which displays output from a terminal emulation and sends input keypresses and mouse activity
@@ -70,6 +70,7 @@ class KONSOLEPRIVATE_EXPORT KTerminalDisplay : public QQuickPaintedItem
     Q_PROPERTY(bool ShowIMEOnClick     READ autoVKB         WRITE setAutoVKB     NOTIFY changedAutoVKB)
     Q_PROPERTY(QSize terminalSize      READ getTerminalSize                      NOTIFY terminalSizeChanged)
     Q_PROPERTY(QSize paintedFontSize   READ getFontSize                          NOTIFY paintedFontSizeChanged)
+    Q_PROPERTY(bool usesMouse          READ getUsesMouse                         NOTIFY usesMouseChanged)
 
 
 public:
@@ -311,13 +312,10 @@ public slots:
     void setColorScheme(const QString &name);
     QStringList availableColorSchemes();
 
-    void scrollWheel(qreal x, qreal y, int lines);
-    void mousePress(qreal x, qreal y);
-    void mouseMove(qreal x, qreal y);
-    void mouseDoubleClick(qreal x, qreal y);
-    void mouseRelease(qreal x, qreal y);
+    void scrollScreenWindow(enum ScreenWindow::RelativeScrollMode mode, int amount);
 
     void setUsesMouse(bool usesMouse);
+    bool getUsesMouse(void);
 
     bool autoFocus() { return m_focusOnClick; }
     void setAutoFocus(bool au);
@@ -409,8 +407,6 @@ public slots:
     /////////////////////////////////////////////////////////////////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////
 
-    void banana(int x, int y, int z, int w);
-
     void setSession(KSession * session);
     KSession * getSession() const { return m_session; }
 
@@ -422,6 +418,8 @@ signals:
     void updatedImage();
 
     void mouseSignal(int,int,int,int);
+
+    void usesMouseChanged();
 
     void terminalSizeChanged();
     void paintedFontSizeChanged();
@@ -475,7 +473,11 @@ protected:
     void geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry);
     QRect geometryRound(const QRectF &r) const;
 
-    //void mousePressEvent(QMouseEvent*ev);
+    Q_INVOKABLE void mousePressEvent(QPoint position, int but, int mod);
+    Q_INVOKABLE void mouseReleaseEvent(QPoint position, int but, int mod);
+    Q_INVOKABLE void mouseDoubleClickEvent(QPoint position, int but, int mod);
+    Q_INVOKABLE void mouseMoveEvent(QPoint position, int but, int buts, int mod);
+    Q_INVOKABLE void scrollWheelEvent(QPoint position, int lines);
     //void mouseReleaseEvent( QMouseEvent* );
     //void mouseMoveEvent( QMouseEvent* );
 
@@ -495,7 +497,7 @@ protected:
     //     - A space (returns ' ')
     //     - Part of a word (returns 'a')
     //     - Other characters (returns the input character)
-    QChar charClass(QChar ch) const;
+    QChar charClass(const Character& ch) const;
 
     void clearImage();
 
@@ -591,6 +593,14 @@ private:
 
     // redraws the cursor
     void updateCursor();
+
+    QPoint findWordStart(const QPoint &pnt);
+    QPoint findWordEnd(const QPoint &pnt);
+    void processMidButtonClick(QPoint &position, Qt::KeyboardModifier modifiers);
+    void copyToX11Selection();
+    void pasteFromClipboard(bool appendEnter);
+    void pasteFromX11Selection(bool appendEnter);
+    void doPaste(QString text, bool appendReturn);
 
     bool handleShortcutOverrideEvent(QKeyEvent* event);
     /////////////////////////////////////////////////////////////////////////////////////

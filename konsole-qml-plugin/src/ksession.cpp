@@ -35,8 +35,6 @@ KSession::KSession(QObject *parent) :
     QObject(parent), m_session(createSession("KSession"))
 {
     connect(m_session, SIGNAL(finished()), this, SLOT(sessionFinished()));
-
-    m_session->run();
 }
 
 KSession::~KSession()
@@ -67,9 +65,16 @@ Session *KSession::createSession(QString name)
      * By setting it to $SHELL right away we actually make the first filecheck obsolete.
      * But as iam not sure if you want to do anything else ill just let both checks in and set this to $SHELL anyway.
      */
-    session->setProgram("/bin/bash");
 
-    //session->setProgram(getenv("SHELL"));
+    //cool-old-term: There is another check in the code. Not sure if useful.
+
+    QString envshell = getenv("SHELL");
+    QString shellProg = envshell != NULL ? envshell : "/bin/bash";
+    session->setProgram(shellProg);
+
+    setenv("TERM", "xterm", 1);
+
+    //session->setProgram();
 
     QStringList args("");
     session->setArguments(args);
@@ -152,33 +157,27 @@ void KSession::setEnvironment(const QStringList &environment)
 
 void KSession::setShellProgram(const QString &progname)
 {
-    if (!m_session)
-        return;
-
     m_session->setProgram(progname);
 }
 
-void KSession::setWorkingDirectory(const QString &dir)
+void KSession::setInitialWorkingDirectory(const QString &dir)
 {
-    if (!m_session)
-        return;
-
+    _initialWorkingDirectory = dir;
     m_session->setInitialWorkingDirectory(dir);
+}
+
+QString KSession::getInitialWorkingDirectory()
+{
+    return _initialWorkingDirectory;
 }
 
 void KSession::setArgs(QStringList &args)
 {
-    if (!m_session)
-        return;
-
     m_session->setArguments(args);
 }
 
 void KSession::setTextCodec(QTextCodec *codec)
 {
-    if (!m_session)
-        return;
-
     m_session->setCodec(codec);
 }
 
